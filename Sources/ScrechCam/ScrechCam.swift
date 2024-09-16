@@ -10,6 +10,17 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
     private var screenRect = UIScreen.main.bounds
     private var videoOutput = AVCaptureVideoDataOutput()
     
+    private var cameraPosition: AVCaptureDevice.Position // New property
+    
+    init(cameraPosition: AVCaptureDevice.Position) {
+        self.cameraPosition = cameraPosition
+        super.init(nibName: nil, bundle: nil)
+    }
+    
+    required init?(coder: NSCoder) {
+        fatalError("init(coder:) has not been implemented")
+    }
+    
     override func viewDidLoad() {
         super.viewDidLoad()
         
@@ -21,7 +32,6 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
             }
             
             setupCaptureSession()
-            
             captureSession.startRunning()
         }
     }
@@ -53,7 +63,7 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
     }
     
     func setupCaptureSession() {
-        guard let videoDevice = AVCaptureDevice.default(.builtInDualWideCamera, for: .video, position: .back),
+        guard let videoDevice = AVCaptureDevice.default(.builtInDualWideCamera, for: .video, position: cameraPosition), // Use the camera position here
               let videoDeviceInput = try? AVCaptureDeviceInput(device: videoDevice),
               captureSession.canAddInput(videoDeviceInput) else { return }
         
@@ -105,10 +115,14 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
 
 @available(iOS 13, macOS 10.15, *)
 public struct CameraCapture: UIViewControllerRepresentable {
-    public init() {}
+    private var cameraPosition: AVCaptureDevice.Position
+    
+    public init(_ cameraPosition: AVCaptureDevice.Position = .back) {
+        self.cameraPosition = cameraPosition
+    }
     
     public func makeUIViewController(context: Context) -> UIViewController {
-        ViewController()
+        ViewController(cameraPosition: cameraPosition)
     }
     
     public func updateUIViewController(_ uiViewController: UIViewController, context: Context) {}
