@@ -113,4 +113,3 @@ public struct CameraCapture: UIViewControllerRepresentable {
     
     public func updateUIViewController(_ uiViewController: UIViewController, context: Context) {}
 }
-
