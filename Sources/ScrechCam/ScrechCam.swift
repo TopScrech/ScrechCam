@@ -10,9 +10,9 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
     private var screenRect = UIScreen.main.bounds
     private var videoOutput = AVCaptureVideoDataOutput()
     
-    private var cameraPosition: AVCaptureDevice.Position // New property
+    private var cameraPosition: AVCaptureDevice.Position
     
-    init(cameraPosition: AVCaptureDevice.Position) {
+    init(_ cameraPosition: AVCaptureDevice.Position) {
         self.cameraPosition = cameraPosition
         super.init(nibName: nil, bundle: nil)
     }
@@ -63,9 +63,14 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
     }
     
     func setupCaptureSession() {
-        guard let videoDevice = AVCaptureDevice.default(.builtInDualWideCamera, for: .video, position: cameraPosition), // Use the camera position here
+        let deviceType: AVCaptureDevice.DeviceType = cameraPosition == .front ? .builtInWideAngleCamera : .builtInDualWideCamera
+        
+        guard let videoDevice = AVCaptureDevice.default(deviceType, for: .video, position: cameraPosition),
               let videoDeviceInput = try? AVCaptureDeviceInput(device: videoDevice),
-              captureSession.canAddInput(videoDeviceInput) else { return }
+              captureSession.canAddInput(videoDeviceInput)
+        else {
+            return
+        }
         
         captureSession.addInput(videoDeviceInput)
         setupPreviewLayer()
@@ -122,7 +127,7 @@ public struct CameraCapture: UIViewControllerRepresentable {
     }
     
     public func makeUIViewController(context: Context) -> UIViewController {
-        ViewController(cameraPosition: cameraPosition)
+        ViewController(cameraPosition)
     }
     
     public func updateUIViewController(_ uiViewController: UIViewController, context: Context) {}
