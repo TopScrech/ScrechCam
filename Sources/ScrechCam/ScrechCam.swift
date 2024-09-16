@@ -10,7 +10,7 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
     private var screenRect = UIScreen.main.bounds
     private var videoOutput = AVCaptureVideoDataOutput()
     
-    var cameraPosition: AVCaptureDevice.Position
+    private var cameraPosition: AVCaptureDevice.Position
     
     init(_ cameraPosition: AVCaptureDevice.Position) {
         self.cameraPosition = cameraPosition
@@ -63,6 +63,7 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
     }
     
     func setupCaptureSession() {
+#warning("Allow camera selection to avoid errors")
         let deviceType: AVCaptureDevice.DeviceType = cameraPosition == .front ? .builtInWideAngleCamera : .builtInDualWideCamera
         
         guard let videoDevice = AVCaptureDevice.default(deviceType, for: .video, position: cameraPosition),
@@ -72,7 +73,6 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
             return
         }
         
-        captureSession.inputs.forEach { captureSession.removeInput($0) } // Remove previous inputs
         captureSession.addInput(videoDeviceInput)
         setupPreviewLayer()
         setupVideoOutput()
@@ -121,20 +121,15 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
 
 @available(iOS 13, macOS 10.15, *)
 public struct CameraCapture: UIViewControllerRepresentable {
-    @Binding private var cameraPosition: AVCaptureDevice.Position
+    private var cameraPosition: AVCaptureDevice.Position
     
-    public init(_ cameraPosition: Binding<AVCaptureDevice.Position>) {
-        _cameraPosition = cameraPosition
+    public init(_ cameraPosition: AVCaptureDevice.Position = .unspecified) {
+        self.cameraPosition = cameraPosition
     }
     
     public func makeUIViewController(context: Context) -> UIViewController {
         ViewController(cameraPosition)
     }
     
-    public func updateUIViewController(_ uiViewController: UIViewController, context: Context) {
-        if let viewController = uiViewController as? ViewController {
-            viewController.cameraPosition = cameraPosition
-            viewController.setupCaptureSession() // Reconfigure session when camera changes
-        }
-    }
+    public func updateUIViewController(_ uiViewController: UIViewController, context: Context) {}
 }
