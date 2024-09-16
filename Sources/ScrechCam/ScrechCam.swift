@@ -105,6 +105,8 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
 
 @available(iOS 13, macOS 10.15, *)
 public struct CameraCapture: UIViewControllerRepresentable {
+    public init() {}
+    
     public func makeUIViewController(context: Context) -> UIViewController {
         ViewController()
     }
