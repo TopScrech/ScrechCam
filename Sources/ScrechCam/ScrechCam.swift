@@ -63,6 +63,7 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
     }
     
     func setupCaptureSession() {
+#warning("Allow camera selection to avoid errors")
         let deviceType: AVCaptureDevice.DeviceType = cameraPosition == .front ? .builtInWideAngleCamera : .builtInDualWideCamera
         
         guard let videoDevice = AVCaptureDevice.default(deviceType, for: .video, position: cameraPosition),
