@@ -10,10 +10,10 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
     private var screenRect = UIScreen.main.bounds
     private var videoOutput = AVCaptureVideoDataOutput()
     
-    @Binding var cameraPosition: AVCaptureDevice.Position
+    var cameraPosition: AVCaptureDevice.Position
     
-    init(_ cameraPosition: Binding<AVCaptureDevice.Position>) {
-        _cameraPosition = cameraPosition
+    init(_ cameraPosition: AVCaptureDevice.Position) {
+        self.cameraPosition = cameraPosition
         super.init(nibName: nil, bundle: nil)
     }
     
@@ -128,7 +128,7 @@ public struct CameraCapture: UIViewControllerRepresentable {
     }
     
     public func makeUIViewController(context: Context) -> UIViewController {
-        ViewController($cameraPosition)
+        ViewController(cameraPosition)
     }
     
     public func updateUIViewController(_ uiViewController: UIViewController, context: Context) {
