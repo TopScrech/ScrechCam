@@ -16,7 +16,7 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
         checkPermission()
         
         sessionQueue.async { [unowned self] in
-            guard permissionGranted else { 
+            guard permissionGranted else {
                 return
             }
             
@@ -104,11 +104,11 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
 }
 
 @available(iOS 13, macOS 10.15, *)
-struct CameraCapture: UIViewControllerRepresentable {
-    func makeUIViewController(context: Context) -> UIViewController {
+public struct CameraCapture: UIViewControllerRepresentable {
+    public func makeUIViewController(context: Context) -> UIViewController {
         ViewController()
     }
     
-    func updateUIViewController(_ uiViewController: UIViewController, context: Context) {}
+    public func updateUIViewController(_ uiViewController: UIViewController, context: Context) {}
 }
 
