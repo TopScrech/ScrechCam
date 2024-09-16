@@ -117,7 +117,7 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
 public struct CameraCapture: UIViewControllerRepresentable {
     private var cameraPosition: AVCaptureDevice.Position
     
-    public init(_ cameraPosition: AVCaptureDevice.Position = .back) {
+    public init(_ cameraPosition: AVCaptureDevice.Position = .unspecified) {
         self.cameraPosition = cameraPosition
     }
     
