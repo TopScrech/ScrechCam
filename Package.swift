@@ -1,4 +1,4 @@
-// swift-tools-version: 5.10
+// swift-tools-version: 6.2.1
 import PackageDescription
 
 let package = Package(
@@ -9,11 +9,7 @@ let package = Package(
             targets: ["ScrechCam"]
         )
     ],
-    dependencies: [],
     targets: [
-        .target(
-            name: "ScrechCam",
-            dependencies: []
-        )
+        .target(name: "ScrechCam")
     ]
 )
