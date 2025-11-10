@@ -27,12 +27,14 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
         checkPermission()
         
         sessionQueue.async { [unowned self] in
-            guard permissionGranted else {
-                return
+            Task { @MainActor in
+                guard permissionGranted else {
+                    return
+                }
+                
+                setupCaptureSession()
+                captureSession.startRunning()
             }
-            
-            setupCaptureSession()
-            captureSession.startRunning()
         }
     }
     
@@ -52,13 +54,14 @@ class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDele
             permissionGranted = false
         }
     }
-    
     func requestPermission() {
         sessionQueue.suspend()
         
         AVCaptureDevice.requestAccess(for: .video) { [unowned self] granted in
-            permissionGranted = granted
-            sessionQueue.resume()
+            Task { @MainActor in
+                permissionGranted = granted
+                sessionQueue.resume()
+            }
         }
     }
     
