@@ -1,138 +1,214 @@
-import SwiftUI
 import AVFoundation
+import SwiftUI
+
+#if canImport(UIKit)
+import UIKit
+typealias PlatformViewController = UIViewController
+typealias PlatformView = UIView
+#elseif canImport(AppKit)
+import AppKit
+typealias PlatformViewController = NSViewController
+typealias PlatformView = NSView
+#endif
 
 @available(iOS 13, macOS 10.15, *)
-class ViewController: UIViewController, AVCaptureVideoDataOutputSampleBufferDelegate {
+private final class CameraViewController: PlatformViewController, AVCaptureVideoDataOutputSampleBufferDelegate {
     private let captureSession = AVCaptureSession()
-    private let sessionQueue = DispatchQueue(label: "sessionQueue")
-    private var permissionGranted = false
+    private let videoOutput = AVCaptureVideoDataOutput()
     private var previewLayer = AVCaptureVideoPreviewLayer()
-    private var screenRect = UIScreen.main.bounds
-    private var videoOutput = AVCaptureVideoDataOutput()
-    
-    private var cameraPosition: AVCaptureDevice.Position
+    private let cameraPosition: AVCaptureDevice.Position
+    private var isSessionConfigured = false
     
     init(_ cameraPosition: AVCaptureDevice.Position) {
         self.cameraPosition = cameraPosition
         super.init(nibName: nil, bundle: nil)
     }
     
+    @available(*, unavailable)
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
     }
     
+    override func loadView() {
+        let rootView = PlatformView()
+#if canImport(AppKit)
+        rootView.wantsLayer = true
+#endif
+        view = rootView
+    }
+    
     override func viewDidLoad() {
         super.viewDidLoad()
-        
-        checkPermission()
-        
-        sessionQueue.async { [unowned self] in
-            Task { @MainActor in
-                guard permissionGranted else {
-                    return
-                }
-                
-                setupCaptureSession()
-                captureSession.startRunning()
-            }
-        }
+        checkPermissionAndStartSession()
+    }
+    
+#if canImport(UIKit)
+    override func viewDidLayoutSubviews() {
+        super.viewDidLayoutSubviews()
+        updatePreviewLayerFrame()
     }
     
     override func viewWillTransition(to size: CGSize, with coordinator: UIViewControllerTransitionCoordinator) {
-        updatePreviewLayerOrientation()
+        super.viewWillTransition(to: size, with: coordinator)
+        
+        coordinator.animate(alongsideTransition: { [weak self] _ in
+            self?.updatePreviewLayerOrientation()
+        })
     }
+#elseif canImport(AppKit)
+    override func viewDidLayout() {
+        super.viewDidLayout()
+        updatePreviewLayerFrame()
+    }
+#endif
     
-    func checkPermission() {
+    private func checkPermissionAndStartSession() {
         switch AVCaptureDevice.authorizationStatus(for: .video) {
         case .authorized:
-            permissionGranted = true
+            startSession()
             
         case .notDetermined:
-            requestPermission()
+            AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
+                guard granted else { return }
+                
+                Task { @MainActor [weak self] in
+                    self?.startSession()
+                }
+            }
             
         default:
-            permissionGranted = false
-        }
-    }
-    func requestPermission() {
-        sessionQueue.suspend()
-        
-        AVCaptureDevice.requestAccess(for: .video) { [unowned self] granted in
-            Task { @MainActor in
-                permissionGranted = granted
-                sessionQueue.resume()
-            }
+            break
         }
     }
     
-    func setupCaptureSession() {
-#warning("Allow camera selection to avoid errors")
-        let deviceType: AVCaptureDevice.DeviceType = cameraPosition == .front ? .builtInWideAngleCamera : .builtInDualWideCamera
+    private func startSession() {
+        guard !isSessionConfigured else { return }
         
-        guard let videoDevice = AVCaptureDevice.default(deviceType, for: .video, position: cameraPosition),
-              let videoDeviceInput = try? AVCaptureDeviceInput(device: videoDevice),
-              captureSession.canAddInput(videoDeviceInput)
+        setupCaptureSession()
+        isSessionConfigured = true
+        
+        if !captureSession.isRunning {
+            captureSession.startRunning()
+        }
+    }
+    
+    private func setupCaptureSession() {
+        guard
+            let videoDevice = discoverVideoDevice(),
+            let videoDeviceInput = try? AVCaptureDeviceInput(device: videoDevice),
+            captureSession.canAddInput(videoDeviceInput)
         else {
             return
         }
         
+        captureSession.beginConfiguration()
         captureSession.addInput(videoDeviceInput)
-        setupPreviewLayer()
         setupVideoOutput()
+        captureSession.commitConfiguration()
+        setupPreviewLayer()
     }
     
-    func setupPreviewLayer() {
+    private func discoverVideoDevice() -> AVCaptureDevice? {
+        let discoverySession = AVCaptureDevice.DiscoverySession(
+            deviceTypes: [.builtInWideAngleCamera],
+            mediaType: .video,
+            position: cameraPosition
+        )
+        
+        return discoverySession.devices.first ?? AVCaptureDevice.default(for: .video)
+    }
+    
+    private func setupPreviewLayer() {
         previewLayer = AVCaptureVideoPreviewLayer(session: captureSession)
-        previewLayer.frame = screenRect
         previewLayer.videoGravity = .resizeAspectFill
-        previewLayer.connection?.videoOrientation = .portrait
         
         DispatchQueue.main.async { [weak self] in
-            self?.view.layer.addSublayer(self!.previewLayer)
+            guard let self else { return }
+            self.updatePreviewLayerOrientation()
+#if canImport(UIKit)
+            self.view.layer.addSublayer(self.previewLayer)
+#elseif canImport(AppKit)
+            self.view.layer?.addSublayer(self.previewLayer)
+#endif
         }
     }
     
-    func setupVideoOutput() {
-        videoOutput.setSampleBufferDelegate(self, queue: DispatchQueue(label: "sampleBufferQueue"))
+    private func setupVideoOutput() {
+        guard captureSession.canAddOutput(videoOutput) else {
+            return
+        }
         
+        videoOutput.setSampleBufferDelegate(self, queue: DispatchQueue(label: "sampleBufferQueue"))
         captureSession.addOutput(videoOutput)
         
-        videoOutput.connection(with: .video)?.videoOrientation = .portrait
+#if canImport(UIKit)
+        if let connection = videoOutput.connection(with: .video), connection.isVideoOrientationSupported {
+            connection.videoOrientation = .portrait
+        }
+#endif
     }
     
-    func updatePreviewLayerOrientation() {
-        screenRect = UIScreen.main.bounds
-        previewLayer.frame = screenRect
+    private func updatePreviewLayerFrame() {
+        previewLayer.frame = view.bounds
+    }
+    
+    private func updatePreviewLayerOrientation() {
+        updatePreviewLayerFrame()
         
-        switch UIDevice.current.orientation {
+#if canImport(UIKit)
+        guard
+            let connection = previewLayer.connection,
+            connection.isVideoOrientationSupported
+        else {
+            return
+        }
+        
+        switch view.window?.windowScene?.interfaceOrientation {
         case .portraitUpsideDown:
-            previewLayer.connection?.videoOrientation = .portraitUpsideDown
+            connection.videoOrientation = .portraitUpsideDown
             
         case .landscapeLeft:
-            previewLayer.connection?.videoOrientation = .landscapeRight
+            connection.videoOrientation = .landscapeLeft
             
         case .landscapeRight:
-            previewLayer.connection?.videoOrientation = .landscapeLeft
+            connection.videoOrientation = .landscapeRight
             
-        case .portrait:
-            previewLayer.connection?.videoOrientation = .portrait
-            
-        default: break
+        default:
+            connection.videoOrientation = .portrait
         }
+#endif
     }
 }
 
+#if canImport(UIKit)
 @available(iOS 13, macOS 10.15, *)
 public struct CameraCapture: UIViewControllerRepresentable {
-    private var cameraPosition: AVCaptureDevice.Position
+    private let cameraPosition: AVCaptureDevice.Position
     
     public init(_ cameraPosition: AVCaptureDevice.Position = .unspecified) {
         self.cameraPosition = cameraPosition
     }
     
     public func makeUIViewController(context: Context) -> UIViewController {
-        ViewController(cameraPosition)
+        CameraViewController(cameraPosition)
     }
     
     public func updateUIViewController(_ uiViewController: UIViewController, context: Context) {}
 }
+
+#elseif canImport(AppKit)
+@available(iOS 13, macOS 10.15, *)
+public struct CameraCapture: NSViewControllerRepresentable {
+    private let cameraPosition: AVCaptureDevice.Position
+    
+    public init(_ cameraPosition: AVCaptureDevice.Position = .unspecified) {
+        self.cameraPosition = cameraPosition
+    }
+    
+    public func makeNSViewController(context: Context) -> NSViewController {
+        CameraViewController(cameraPosition)
+    }
+    
+    public func updateNSViewController(_ nsViewController: NSViewController, context: Context) {}
+}
+#endif
