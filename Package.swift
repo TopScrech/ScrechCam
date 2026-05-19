@@ -1,13 +1,11 @@
-// swift-tools-version: 6.2.1
+// swift-tools-version: 6.3.2
+
 import PackageDescription
 
 let package = Package(
     name: "ScrechCam",
     products: [
-        .library(
-            name: "ScrechCam",
-            targets: ["ScrechCam"]
-        )
+        .library(name: "ScrechCam", targets: ["ScrechCam"])
     ],
     targets: [
         .target(name: "ScrechCam")
